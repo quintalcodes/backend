@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model UserRole {
+  id                  String   @id @default(uuid())
+  roleName            String
+  isDeleted           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt 
+  users               User[]
+}
+
+model User {
+  id                  String   @id @default(uuid())
+  workosUserId        String   @unique
+  roleId              String
+  email               String   @unique
+  name                String
+  lastName            String?
+  phone               String?
+  photoUrl            String?
+  isStaff             Boolean  @default(false)
+  isVerified          Boolean  @default(false)
+  role                String   @default("member")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  isDeleted           Boolean  @default(false)
+  userRole            UserRole @relation(fields: [roleId], references: [id])
+  transactions        Transaction[]
+  accounts            Account[]
+  invoices            Invoice[]
+  lineItems           LineItem[]
+  goals               Goal[]
+  recurringTransactions RecurringTransaction[]
+  goalTransactions    GoalTransaction[]
+  budgets             Budget[]
+}
+
+model Invoice {
+  id            String     @id @default(uuid())
+  userId        String     
+  user          User       @relation(fields: [userId], references: [id])
+  merchantName  String     
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  totalAmount   Float      @default(0)
+  category      String
+  dueDate       DateTime?
+  status        String?    // whether the invoice is paid or not
+  lineItems     LineItem[]
+}
+
+model LineItem {
+  id            String   @id @default(uuid())
+  invoiceId     String   
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+  userId        String   
+  user          User     @relation(fields: [userId], references: [id])
+  description   String
+  price         Float    @default(0)
+  confidence    Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Account {
+  id                    String                 @id @default(uuid())
+  userId                String                 
+  user                  User                   @relation(fields: [userId], references: [id])
+  name                  String
+  type                  String
+  balance               Float                  @default(0)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
+}
+
+model Transaction {
+  id                          String           @id @default(uuid())
+  userId                      String           
+  user                        User             @relation(fields: [userId], references: [id])
+  accountId                   String           
+  account                     Account          @relation(fields: [accountId], references: [id])
+  amount                      Float            @default(0)
+  kind                        String           // income, expense
+  date                        DateTime
+  dueDate                     DateTime?         
+  description                 String
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+  transactionCategory         TransactionCategory? @relation(fields: [transactionCategoryId], references: [id])
+  transactionCategoryId       String?             
+}
+
+model TransactionCategory {
+  id            String           @id @default(uuid())
+  name          String
+  description   String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  transactions  Transaction[]
+  recurringTransactions RecurringTransaction[]
+  budgetLines BudgetLine[]
+}
+
+model RecurringTransaction {
+  id            String   @id @default(uuid())
+  description   String
+  userId                      String           
+  user                        User             @relation(fields: [userId], references: [id])
+  accountId     String   
+  account       Account  @relation(fields: [accountId], references: [id])
+  amount        Float    @default(0)
+  kind          String   // income, expense
+  recurringType String   // daily, weekly, fortnightly, monthly, yearly
+  startDate     DateTime 
+  endDate       DateTime? 
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  transactionCategoryId String?
+  transactionCategory TransactionCategory? @relation(fields: [transactionCategoryId], references: [id])
+}
+
+model Goal {
+  id            String           @id @default(uuid())
+  userId        String           
+  user          User             @relation(fields: [userId], references: [id])
+  name          String
+  description   String?
+  targetAmount  Float           
+  targetDate    DateTime?       
+  category      String?
+  status        String           @default("active") // active, completed, cancelled
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  transactions  GoalTransaction[]
+}
+
+model GoalTransaction {
+  id            String      @id @default(uuid())
+  userId        String     
+  user          User        @relation(fields: [userId], references: [id])
+  goalId        String     
+  goal          Goal        @relation(fields: [goalId], references: [id])
+  kind          String?      // income, expense
+  amount        Float       @default(0)
+  date          DateTime
+  createdAt     DateTime    @default(now())
+}
+
+
+model Budget {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  name        String?
+  periodStart DateTime
+  periodEnd   DateTime
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lines       BudgetLine[]
+}
+
+model BudgetLine {
+  id                    String               @id @default(uuid())
+  budgetId              String
+  budget                Budget               @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  transactionCategoryId String?
+  transactionCategory   TransactionCategory? @relation(fields: [transactionCategoryId], references: [id])
+  categoryLabel         String?
+  amount                Float
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+}
