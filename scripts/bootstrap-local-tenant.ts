@@ -13,6 +13,7 @@ const tenantDbName = "tenant_budgetflow_dev";
 const tenantName = "Budgetflow Dev";
 const tenantSubdomain = "budgetflow-dev";
 const workosOrgId = "";
+
 const tenantUrl = `postgresql://postgres:postgres@${IP}:5433/${tenantDbName}`;
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 
@@ -75,81 +76,86 @@ async function seedRegistry() {
   await registryClient.end();
 }
 
-async function seedUserRoles() {
-  const tenantClient = new Client({ connectionString: tenantUrl });
-  await tenantClient.connect();
-  const roleNames = ["owner", "user"] as const;
+const companySystemRoles = [
+  { name: "Owner", sortOrder: 1 },
+  { name: "Admin", sortOrder: 2 },
+  { name: "Venue Manager", sortOrder: 3 },
+  { name: "Supervisor", sortOrder: 4 },
+  { name: "Team Member", sortOrder: 5 },
+] as const;
 
-  const roleResults: Array<{ id: string; roleName: string }> = [];
-  try {
-    for (const roleName of roleNames) {
-      const result = await tenantClient.query<{ id: string; roleName: string }>(
-        `
+const venueSystemRoles = [
+  { name: "Owner", sortOrder: 1 },
+  { name: "Admin", sortOrder: 2 },
+  { name: "Venue Manager", sortOrder: 3 },
+  { name: "Supervisor", sortOrder: 4 },
+  { name: "Team Member", sortOrder: 5 },
+] as const;
+
+type SeededRole = { id: string; name: string; sortOrder: number };
+type SystemRole = { name: string; sortOrder: number };
+
+async function upsertSystemRoles(
+  client: Client,
+  tableName: "company_roles" | "venue_roles",
+  roles: readonly SystemRole[],
+): Promise<SeededRole[]> {
+  const roleResults: SeededRole[] = [];
+
+  for (const role of roles) {
+    const result = await client.query<{ id: string; name: string; sort_order: number }>(
+      `
         WITH updated_role AS (
-          UPDATE "UserRole"
-          SET "updatedAt" = NOW()
-          WHERE "roleName" = $1
-          RETURNING "id", "roleName"
+          UPDATE "${tableName}"
+          SET
+            "sort_order" = $2,
+            "is_system_role" = true,
+            "updated_at" = NOW()
+          WHERE "name" = $1
+          RETURNING "id", "name", "sort_order"
         ),
         inserted_role AS (
-          INSERT INTO "UserRole" ("id", "roleName", "createdAt", "updatedAt")
-          SELECT $2, $1, NOW(), NOW()
+          INSERT INTO "${tableName}" ("id", "name", "is_system_role", "sort_order", "created_at", "updated_at")
+          SELECT $3, $1, true, $2, NOW(), NOW()
           WHERE NOT EXISTS (SELECT 1 FROM updated_role)
-          RETURNING "id", "roleName"
+          RETURNING "id", "name", "sort_order"
         )
-        SELECT "id", "roleName" FROM updated_role
+        SELECT "id", "name", "sort_order" FROM updated_role
         UNION ALL
-        SELECT "id", "roleName" FROM inserted_role
+        SELECT "id", "name", "sort_order" FROM inserted_role
       `,
-        [roleName, randomUUID()],
-      );
+      [role.name, role.sortOrder, randomUUID()],
+    );
 
-      if (result.rows[0]) {
-        roleResults.push(result.rows[0]);
-      }
+    if (result.rows[0]) {
+      roleResults.push({
+        id: result.rows[0].id,
+        name: result.rows[0].name,
+        sortOrder: result.rows[0].sort_order,
+      });
     }
-  } finally {
-    await tenantClient.end();
   }
 
   return roleResults;
 }
 
-async function seedTenantAdmin(ownerRole: { id: string; roleName: string }) {
+async function seedCompanyRoles() {
   const tenantClient = new Client({ connectionString: tenantUrl });
 
   await tenantClient.connect();
   try {
-    await tenantClient.query(
-      `
-      INSERT INTO "User" (
-        "id",
-        "workosUserId",
-        "roleId",
-        "email",
-        "name",
-        "lastName",
-        "createdAt",
-        "updatedAt"
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-      ON CONFLICT ("email")
-      DO UPDATE SET
-        "workosUserId" = EXCLUDED."workosUserId",
-        "roleId" = EXCLUDED."roleId",
-        "name" = EXCLUDED."name",
-        "lastName" = EXCLUDED."lastName",
-        "updatedAt" = NOW()
-    `,
-      [
-        randomUUID(),
-        workOSUserId,
-        ownerRole.id,
-        tenantAdminEmail,
-        tenantAdminName,
-        tenantAdminLastName,
-      ],
-    );
+    return await upsertSystemRoles(tenantClient, "company_roles", companySystemRoles);
+  } finally {
+    await tenantClient.end();
+  }
+}
+
+async function seedVenueRoles() {
+  const tenantClient = new Client({ connectionString: tenantUrl });
+
+  await tenantClient.connect();
+  try {
+    return await upsertSystemRoles(tenantClient, "venue_roles", venueSystemRoles);
   } finally {
     await tenantClient.end();
   }
@@ -171,16 +177,11 @@ async function main() {
 
   await seedRegistry();
 
-  const roles = await seedUserRoles();
-  const ownerRole = roles.find((role) => role.roleName === "owner");
+  const companyRoles = await seedCompanyRoles();
+  const venueRoles = await seedVenueRoles();
 
-  if (!ownerRole) {
-    throw new Error("Owner role not found");
-  }
-
-  await seedTenantAdmin(ownerRole);
-
-  console.log("Roles:", roles);
+  console.log("Company roles:", companyRoles);
+  console.log("Venue roles:", venueRoles);
 
   console.log(`Bootstrapped registry and tenant database ${tenantDbName} for ${tenantName}.`);
 }
