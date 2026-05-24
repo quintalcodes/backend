@@ -9,19 +9,21 @@ const IP = "localhost";
 // Change these values to your own. Run the script to add a new tenant to the database.
 const adminUrl = `postgresql://postgres:postgres@${IP}:5433/postgres`;
 const registryUrl = `postgresql://postgres:postgres@${IP}:5433/registry`;
-const tenantDbName = "tenant_budgetflow_dev";
-const tenantName = "Budgetflow Dev";
-const tenantSubdomain = "budgetflow-dev";
-const workosOrgId = "";
+const tenantDbName = "cafe_brown";
+const tenantName = "Cafe Brown";
+const tenantSubdomain = "cafe-brown";
+const workosOrgId = "org_01KNG52GR7G2FJ9BQBEPZXY993";
 
 const tenantUrl = `postgresql://postgres:postgres@${IP}:5433/${tenantDbName}`;
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 
-// Tentant Admin values. Quite important; take from workOS user profile.
-const tenantAdminEmail = "squintal@gmail.com";
-const tenantAdminName = "Sam";
-const tenantAdminLastName = "Quintal";
-const workOSUserId = "";
+// Tentant Owner values. Very important; this should reference back to the VenueLog Account owner, and assure the user has owner role in WorkOS.
+// This is the method we use to assure only this user can create companies or venues.
+const tenantOwnerEmail = "squintal@gmail.com";
+const tenantOwnerName = "Sam";
+const tenantOwnerLastName = "Quintal";
+// WorkOS UserId
+const authId = "user_01KNG5TZ6RX4KQX9ZAQ4BMDH6Y";
 
 function assertSafeDatabaseName(name: string) {
   if (!/^[a-zA-Z0-9_]+$/.test(name)) {
@@ -161,6 +163,29 @@ async function seedVenueRoles() {
   }
 }
 
+async function seedTenantOwner() {
+  const tenantClient = new Client({ connectionString: tenantUrl });
+
+  await tenantClient.connect();
+  try {
+    await tenantClient.query(
+      `
+        INSERT INTO "users" ("id", "auth_id", "email", "first_name", "last_name", "is_verified", "is_active", "status", "created_at", "updated_at")
+        VALUES ($1, $2, $3, $4, $5, true, true, 'active', NOW(), NOW())
+        ON CONFLICT ("auth_id")
+        DO UPDATE SET
+          "email" = EXCLUDED."email",
+          "first_name" = EXCLUDED."first_name",
+          "last_name" = EXCLUDED."last_name",
+          "updated_at" = NOW()
+      `,
+      [randomUUID(), authId, tenantOwnerEmail, tenantOwnerName, tenantOwnerLastName],
+    );
+  } finally {
+    await tenantClient.end();
+  }
+}
+
 async function main() {
   assertSafeDatabaseName("registry");
   assertSafeDatabaseName(tenantDbName);
@@ -179,9 +204,11 @@ async function main() {
 
   const companyRoles = await seedCompanyRoles();
   const venueRoles = await seedVenueRoles();
+  const tenantOwner = await seedTenantOwner();
 
   console.log("Company roles:", companyRoles);
   console.log("Venue roles:", venueRoles);
+  console.log("Tenant owner:", tenantOwner);
 
   console.log(`Bootstrapped registry and tenant database ${tenantDbName} for ${tenantName}.`);
 }

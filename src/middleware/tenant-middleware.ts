@@ -13,6 +13,11 @@ type TenantMiddlewareOptions = {
 
 const defaultRegistryService = new RegistryService();
 
+/**
+ * Middleware used to return the P
+ * @param par
+ * @returns
+ */
 export const createTenantMiddleware = ({
   registryService = defaultRegistryService,
   getTenantPrisma = getTenantPrismaForDbName,

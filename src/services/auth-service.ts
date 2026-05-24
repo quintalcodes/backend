@@ -83,13 +83,16 @@ export class AuthService {
       throw new Error("organizationId is required");
     }
 
-    // I also want the users id from the database
-
     const { accessToken, expiresIn } = await this.issueAccessToken(
       response.user.id,
       organizationId,
     );
 
+    // console.log("accessToken", accessToken);
+    // console.log("expiresIn", expiresIn);
+    console.log("response", response);
+    // console.log("workosUserId", response.user.id);
+    // console.log("organizationId", organizationId);
     return { accessToken, expiresIn, workosUserId: response.user.id, organizationId };
   }
 
@@ -97,6 +100,7 @@ export class AuthService {
     const expiresIn = getJwtExpiresInSeconds();
     const now = Math.floor(Date.now() / 1000);
 
+    // We can add custom values here that will be added to the JWT payload.
     const accessToken = await sign(
       {
         sub: workosUserId,

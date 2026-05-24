@@ -54,6 +54,7 @@ export class AuthController {
       });
 
       setRefreshCookie(c, session.plainToken);
+
       return c.json<LoginResponse>(
         { accessToken: data.accessToken, expiresIn: data.expiresIn },
         200,
