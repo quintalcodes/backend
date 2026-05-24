@@ -5,11 +5,13 @@ import { AuthController } from "./controllers/auth-controller";
 import { UsersController } from "./controllers/users-controller";
 import { BudgetLineController } from "./controllers/budget-line-controller";
 import { AnalyticsController } from "./controllers/analytics-controller";
+// import { CompaniesController } from "./controllers/companies-controller";
 // controller constructors
 const authController = new AuthController();
 const usersController = new UsersController();
 const budgetLineController = new BudgetLineController();
 const analyticsController = new AnalyticsController();
+// const companiesController = new CompaniesController();
 // middleware
 import { authMiddleware } from "./middleware/auth-middleware";
 import { tenantMiddleware } from "./middleware/tenant-middleware";
@@ -45,13 +47,18 @@ app.use("/api/*", tenantMiddleware);
 
 // users
 app.get("/api/users/current", (c) => usersController.getCurrentUser(c));
+app.post("/api/users/invite", (c) => usersController.inviteUser(c));
 app.post("/api/users", (c) => usersController.createUser(c));
 
 // companies
-app.get("/api/companies", (c) => companiesController.getCompanies(c));
-app.post("/api/companies", (c) => companiesController.createCompany(c));
-app.patch("/api/companies", (c) => companiesController.updateCompany(c));
-app.get("/api/companies/:id", (c) => companiesController.getCompanyById(c));
+// app.get("/api/companies", (c) => companiesController.getCompanies(c));
+// app.post("/api/companies", (c) => companiesController.createCompany(c));
+// app.patch("/api/companies", (c) => companiesController.updateCompany(c));
+// app.get("/api/companies/:id", (c) => companiesController.getCompanyById(c));
+
+// company settings
+
+// company users.
 
 app.get("/api/budget-line", (c) => budgetLineController.getBudgetLines(c));
 app.post("/api/budget-line", (c) => budgetLineController.createBudgetLine(c));

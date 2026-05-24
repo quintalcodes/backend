@@ -1,7 +1,11 @@
 import { PrismaClient, Users } from "../generated/prisma/client";
-import { CreateUserInput } from "../validators/users.schema";
+import { CreateUserInput, InviteUserInput } from "../validators/users.schema";
+import { getWorkOSClient } from "../lib/workos-client";
+import { Context } from "hono";
 
 export class UsersService {
+  private workosClient = getWorkOSClient();
+
   async getCurrentUser(prisma: PrismaClient, authId: string) {
     return prisma.users.findUnique({
       where: {
@@ -30,5 +34,25 @@ export class UsersService {
     return prisma.users.create({
       data,
     });
+  }
+
+  async inviteUser(
+    prisma: PrismaClient,
+    data: InviteUserInput,
+    organizationId: string,
+    authId: string,
+  ) {
+    try {
+      // invite the user to the organization:
+      const invitation = await this.workosClient.userManagement.sendInvitation({
+        email: data.email,
+        organizationId: organizationId,
+        inviterUserId: authId,
+      });
+
+      console.log(organizationId);
+      console.log(invitation);
+      return { message: "OK" };
+    } catch (error) {}
   }
 }

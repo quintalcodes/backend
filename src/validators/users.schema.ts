@@ -18,8 +18,15 @@ export const deleteUserSchema = z.object({
   id: z.string().min(1),
 });
 
+export const inviteUserSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.email(),
+});
+
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
+export type InviteUserInput = z.infer<typeof inviteUserSchema>;
 
 export type IUser = Users;

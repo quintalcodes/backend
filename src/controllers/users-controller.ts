@@ -3,7 +3,7 @@ import { z } from "zod";
 import { log } from "../utils/logger";
 import { UsersService } from "../services/users-service";
 import { getTenantPrismaFromContext } from "../lib/context-client";
-import { createUserSchema } from "../validators/users.schema";
+import { createUserSchema, inviteUserSchema } from "../validators/users.schema";
 
 export class UsersController {
   private readonly usersService: UsersService = new UsersService();
@@ -37,6 +37,35 @@ export class UsersController {
     } catch (error) {
       log.error("Failed to create user", error);
       return c.json({ error: "Failed to create user" }, 500);
+    }
+  }
+
+  async inviteUser(c: Context) {
+    try {
+      const { prismaClient, organizationId, authId } = getTenantPrismaFromContext(c);
+
+      // TODO: Check if user has permissions to invite users.
+      const body = await c.req.json();
+      console.log(body);
+      const validated = inviteUserSchema.safeParse(body);
+
+      if (!validated.success) {
+        console.log(validated.error);
+        return c.json({ error: z.treeifyError(validated.error) }, 400);
+      }
+
+      const newUser = await this.usersService.inviteUser(
+        prismaClient,
+        validated.data,
+        organizationId,
+        authId,
+      );
+
+      console.log(newUser);
+      return c.json({ message: "OK" }, 200);
+    } catch (error) {
+      log.error("Failed to invite user", error);
+      return c.json({ error: "Failed to invite user" }, 500);
     }
   }
 }

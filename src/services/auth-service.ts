@@ -1,5 +1,6 @@
 import { sign } from "hono/jwt";
-import { WorkOS } from "@workos-inc/node";
+import type { WorkOS } from "@workos-inc/node";
+import { getWorkOSClient } from "../lib/workos-client";
 import {
   getJwtAudience,
   getJwtExpiresInSeconds,
@@ -39,27 +40,8 @@ const isInvalidCredentialsError = (error: unknown) => {
 };
 
 export class AuthService {
-  // the WorkOS Client
-  private getClient() {
-    const apiKey = Bun.env.WORKOS_API_KEY;
-    const clientId = Bun.env.WORKOS_CLIENT_ID;
-
-    if (!apiKey) {
-      throw new Error("WORKOS_API_KEY is required");
-    }
-
-    if (!clientId) {
-      throw new Error("WORKOS_CLIENT_ID is required");
-    }
-
-    return new WorkOS({
-      apiKey,
-      clientId,
-    });
-  }
-
   async loginWithPassword(input: LoginWithPasswordInput, context: LoginWithPasswordContext = {}) {
-    const client = this.getClient();
+    const client = getWorkOSClient();
     let response: Awaited<ReturnType<WorkOS["userManagement"]["authenticateWithPassword"]>>;
 
     try {
