@@ -56,7 +56,9 @@ enum VenueUserStatus {
 model Users {
   id                          String   @id              @default(uuid())
   authId                      String   @unique          @map("auth_id")
+  invitationId                String?                   @map("invitation_id")
   mId                         String?                   @map("m_id")
+  
   isVerified                  Boolean  @default(false)  @map("is_verified")
   firstName                   String                    @map("first_name")
   lastName                    String                    @map("last_name")

@@ -65,6 +65,9 @@ export class UsersController {
       return c.json({ message: "OK" }, 200);
     } catch (error) {
       log.error("Failed to invite user", error);
+      if (error instanceof Error && error.message === "User already invited to organization.") {
+        return c.json({ error: "User already invited to organization." }, 400);
+      }
       return c.json({ error: "Failed to invite user" }, 500);
     }
   }

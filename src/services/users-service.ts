@@ -2,6 +2,7 @@ import { PrismaClient, Users } from "../generated/prisma/client";
 import { CreateUserInput, InviteUserInput } from "../validators/users.schema";
 import { getWorkOSClient } from "../lib/workos-client";
 import { Context } from "hono";
+import { log } from "../utils/logger";
 
 export class UsersService {
   private workosClient = getWorkOSClient();
@@ -36,6 +37,9 @@ export class UsersService {
     });
   }
 
+  /**
+   * Invites a user to the organization and creates a new user record and adds them as a venueUser with specific role
+   */
   async inviteUser(
     prisma: PrismaClient,
     data: InviteUserInput,
@@ -43,16 +47,37 @@ export class UsersService {
     authId: string,
   ) {
     try {
-      // invite the user to the organization:
       const invitation = await this.workosClient.userManagement.sendInvitation({
         email: data.email,
         organizationId: organizationId,
         inviterUserId: authId,
       });
 
-      console.log(organizationId);
-      console.log(invitation);
-      return { message: "OK" };
-    } catch (error) {}
+      if (!invitation.id) {
+        throw new Error("WorkOS invitation failed");
+      }
+
+      const createdUser = await prisma.users.create({
+        data: {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          authId: "PENDING_INVITE",
+          invitationId: invitation.id,
+          status: "invited",
+        },
+      });
+
+      return { message: "OK", data: createdUser };
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error as any).rawData.code === "email_already_invited_to_organization"
+      ) {
+        log.error("User already invited to organization.", error);
+        throw new Error("User already invited to organization.");
+      }
+      throw error;
+    }
   }
 }
