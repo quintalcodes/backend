@@ -50,6 +50,8 @@ app.get("/api/users/current", (c) => usersController.getCurrentUser(c));
 app.post("/api/users/invite", (c) => usersController.inviteUser(c));
 app.post("/api/users", (c) => usersController.createUser(c)); // remove later
 
+app.post("/api/users/company-users", (c) => usersController.createCompanyUser(c));
+
 // companies
 app.get("/api/companies", (c) => companiesController.getCompanies(c));
 app.post("/api/companies", (c) => companiesController.createCompany(c));

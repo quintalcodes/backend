@@ -1,11 +1,25 @@
 import { PrismaClient, Users } from "../generated/prisma/client";
-import { CreateUserInput, InviteUserInput } from "../validators/users.schema";
+import {
+  CreateCompanyUserInput,
+  CreateUserInput,
+  InviteUserInput,
+} from "../validators/users.schema";
 import { getWorkOSClient } from "../lib/workos-client";
-import { Context } from "hono";
 import { log } from "../utils/logger";
 
 export class UsersService {
   private workosClient = getWorkOSClient();
+
+  private async resolveUserId(prisma: PrismaClient, authId: string) {
+    const user = await prisma.users.findUnique({
+      where: { authId },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new Error("User not found");
+    }
+    return user.id;
+  }
 
   async getCurrentUser(prisma: PrismaClient, authId: string) {
     return prisma.users.findUnique({
@@ -47,26 +61,40 @@ export class UsersService {
     authId: string,
   ) {
     try {
-      const invitation = await this.workosClient.userManagement.sendInvitation({
+      // const invitation = await this.workosClient.userManagement.sendInvitation({
+      //   email: data.email,
+      //   organizationId: organizationId,
+      //   inviterUserId: authId,
+      // });
+
+      // if (!invitation.id) {
+      //   throw new Error("WorkOS invitation failed");
+      // }
+      console.log(data);
+
+      const userData: CreateUserInput = {
         email: data.email,
-        organizationId: organizationId,
-        inviterUserId: authId,
-      });
+        firstName: data.firstName,
+        lastName: data.lastName,
+        invitationId: "UUID4",
+        // status: "invited",
+      };
 
-      if (!invitation.id) {
-        throw new Error("WorkOS invitation failed");
-      }
+      const createdUser = await this.createUser(prisma, userData, authId);
 
-      const createdUser = await prisma.users.create({
-        data: {
-          email: data.email,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          authId: "PENDING_INVITE",
-          invitationId: invitation.id,
-          status: "invited",
-        },
-      });
+      // returns the user-id of the user using this endpoint.
+      // const invitedByUserId = await this.resolveUserId(prisma, authId);
+
+      // if (data.companyId) {
+      //   const companyUserData: CreateCompanyUserInput = {
+      //     companyId: data.companyId,
+      //     userId: createdUser.id,
+      //     companyRoleId: data.companyRoleId ?? "",
+      //     invitedByUserId: invitedByUserId,
+      //   };
+      //   await this.createCompanyUser(prisma, companyUserData, invitedByUserId);
+      // } else if (data.venueId) {
+      // }
 
       return { message: "OK", data: createdUser };
     } catch (error) {
@@ -79,5 +107,15 @@ export class UsersService {
       }
       throw error;
     }
+  }
+
+  async createCompanyUser(prisma: PrismaClient, data: CreateCompanyUserInput, authId: string) {
+    // TODO: Check if user has permissions to create company user.
+
+    return prisma.companyUsers.create({
+      data: {
+        ...data,
+      },
+    });
   }
 }

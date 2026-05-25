@@ -3,7 +3,11 @@ import { z } from "zod";
 import { log } from "../utils/logger";
 import { UsersService } from "../services/users-service";
 import { getTenantPrismaFromContext } from "../lib/context-client";
-import { createUserSchema, inviteUserSchema } from "../validators/users.schema";
+import {
+  createCompanyUserSchema,
+  createUserSchema,
+  inviteUserSchema,
+} from "../validators/users.schema";
 
 export class UsersController {
   private readonly usersService: UsersService = new UsersService();
@@ -46,7 +50,7 @@ export class UsersController {
 
       // TODO: Check if user has permissions to invite users.
       const body = await c.req.json();
-      console.log(body);
+
       const validated = inviteUserSchema.safeParse(body);
 
       if (!validated.success) {
@@ -62,13 +66,30 @@ export class UsersController {
       );
 
       console.log(newUser);
-      return c.json({ message: "OK" }, 200);
+
+      return c.json({ message: "OK", data: newUser }, 200);
     } catch (error) {
       log.error("Failed to invite user", error);
       if (error instanceof Error && error.message === "User already invited to organization.") {
         return c.json({ error: "User already invited to organization." }, 400);
       }
       return c.json({ error: "Failed to invite user" }, 500);
+    }
+  }
+
+  async createCompanyUser(c: Context) {
+    try {
+      const { prismaClient, authId } = getTenantPrismaFromContext(c);
+
+      const body = await c.req.json();
+      const validated = createCompanyUserSchema.safeParse(body);
+
+      if (!validated.success) {
+        return c.json({ error: z.treeifyError(validated.error) }, 400);
+      }
+    } catch (error) {
+      log.error("Failed to create company user", error);
+      return c.json({ error: "Failed to create company user" }, 500);
     }
   }
 }

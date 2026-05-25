@@ -70,11 +70,6 @@ export class AuthService {
       organizationId,
     );
 
-    // console.log("accessToken", accessToken);
-    // console.log("expiresIn", expiresIn);
-    console.log("response", response);
-    // console.log("workosUserId", response.user.id);
-    // console.log("organizationId", organizationId);
     return { accessToken, expiresIn, workosUserId: response.user.id, organizationId };
   }
 
