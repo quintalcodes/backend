@@ -1,4 +1,4 @@
-import { PrismaClient, Users } from "../generated/prisma/client";
+import { PrismaClient, Users, VenueUserStatus } from "../generated/prisma/client";
 import {
   CreateCompanyUserInput,
   CreateVenueUserInput,

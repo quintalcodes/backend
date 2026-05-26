@@ -195,9 +195,10 @@ model VenueUsers {
   companyId                   String                  @map("company_id")
   venueId                     String                  @map("venue_id")
   userId                      String                  @map("user_id")
-  venueRoleId                 String                  @map("venue_role_id")
   status                      VenueUserStatus         @default(active) @map("status")
+  venueRoleId                 String                  @map("venue_role_id")
   isActive                    Boolean  @default(true) @map("is_active")
+  invitedByUserId             String?                 @map("invited_by_user_id")
 
   createdAt                   DateTime                @default(now()) @map("created_at")
   updatedAt                   DateTime                @updatedAt @map("updated_at")

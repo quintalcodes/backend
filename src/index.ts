@@ -6,12 +6,14 @@ import { UsersController } from "./controllers/users-controller";
 import { BudgetLineController } from "./controllers/budget-line-controller";
 import { AnalyticsController } from "./controllers/analytics-controller";
 import { CompaniesController } from "./controllers/companies-controller";
+import { VenuesController } from "./controllers/venue-controller";
 // controller constructors
 const authController = new AuthController();
 const usersController = new UsersController();
 const budgetLineController = new BudgetLineController();
 const analyticsController = new AnalyticsController();
 const companiesController = new CompaniesController();
+const venuesController = new VenuesController();
 // middleware
 import { authMiddleware } from "./middleware/auth-middleware";
 import { tenantMiddleware } from "./middleware/tenant-middleware";
@@ -61,7 +63,7 @@ app.get("/api/companies/:id", (c) => companiesController.getCompanyById(c));
 // company settings
 
 // venues
-app.post("/api/venues", (c) => venuesController.getVenues(c));
+app.post("/api/venues", (c) => venuesController.createVenue(c));
 
 // company users.
 
