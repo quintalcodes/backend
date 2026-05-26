@@ -60,6 +60,9 @@ app.get("/api/companies/:id", (c) => companiesController.getCompanyById(c));
 
 // company settings
 
+// venues
+app.post("/api/venues", (c) => venuesController.getVenues(c));
+
 // company users.
 
 app.get("/api/budget-line", (c) => budgetLineController.getBudgetLines(c));

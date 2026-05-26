@@ -1,6 +1,7 @@
 import { PrismaClient, Users } from "../generated/prisma/client";
 import {
   CreateCompanyUserInput,
+  CreateVenueUserInput,
   CreateUserInput,
   InviteUserInput,
 } from "../validators/users.schema";
@@ -10,6 +11,9 @@ import { log } from "../utils/logger";
 export class UsersService {
   private workosClient = getWorkOSClient();
 
+  /**
+   * Resolves the user id DB record from the auth id.
+   */
   private async resolveUserId(prisma: PrismaClient, authId: string) {
     const user = await prisma.users.findUnique({
       where: { authId },
@@ -52,7 +56,7 @@ export class UsersService {
   }
 
   /**
-   * Invites a user to the organization and creates a new user record and adds them as a venueUser with specific role
+   * Invites a user to the organization and creates a new user record and adds them as a venueUser with specific role.
    */
   async inviteUser(
     prisma: PrismaClient,
@@ -61,40 +65,37 @@ export class UsersService {
     authId: string,
   ) {
     try {
-      // const invitation = await this.workosClient.userManagement.sendInvitation({
-      //   email: data.email,
-      //   organizationId: organizationId,
-      //   inviterUserId: authId,
-      // });
+      const invitedByUserId = await this.resolveUserId(prisma, authId);
 
-      // if (!invitation.id) {
-      //   throw new Error("WorkOS invitation failed");
-      // }
-      console.log(data);
+      const invitation = await this.workosClient.userManagement.sendInvitation({
+        email: data.email,
+        organizationId: organizationId,
+        inviterUserId: authId,
+      });
+
+      if (!invitation.id) {
+        throw new Error("WorkOS invitation failed");
+      }
 
       const userData: CreateUserInput = {
         email: data.email,
         firstName: data.firstName,
         lastName: data.lastName,
-        invitationId: "UUID4",
-        // status: "invited",
+        invitationId: invitation.id,
+        status: "invited",
       };
 
       const createdUser = await this.createUser(prisma, userData, authId);
 
-      // returns the user-id of the user using this endpoint.
-      // const invitedByUserId = await this.resolveUserId(prisma, authId);
+      const venueUserData: CreateVenueUserInput = {
+        venueId: data.venueId,
+        companyId: data.companyId as string,
+        userId: createdUser.id,
+        venueRoleId: data.venueRoleId,
+        invitedByUserId: invitedByUserId,
+      };
 
-      // if (data.companyId) {
-      //   const companyUserData: CreateCompanyUserInput = {
-      //     companyId: data.companyId,
-      //     userId: createdUser.id,
-      //     companyRoleId: data.companyRoleId ?? "",
-      //     invitedByUserId: invitedByUserId,
-      //   };
-      //   await this.createCompanyUser(prisma, companyUserData, invitedByUserId);
-      // } else if (data.venueId) {
-      // }
+      await this.createVenueUser(prisma, venueUserData, invitedByUserId);
 
       return { message: "OK", data: createdUser };
     } catch (error) {
@@ -116,6 +117,14 @@ export class UsersService {
       data: {
         ...data,
       },
+    });
+  }
+
+  async createVenueUser(prisma: PrismaClient, data: CreateVenueUserInput, authId: string) {
+    // TODO: Check if user has permissions to create venue user.
+
+    return prisma.venueUsers.create({
+      data: data,
     });
   }
 }
