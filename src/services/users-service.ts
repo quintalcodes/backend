@@ -1,4 +1,4 @@
-import { PrismaClient, Users, VenueUserStatus } from "../generated/prisma/client";
+import { PrismaClient, UserStatus, Users, VenueUserStatus } from "../generated/prisma/client";
 import {
   CreateCompanyUserInput,
   CreateVenueUserInput,
@@ -7,6 +7,7 @@ import {
 } from "../validators/users.schema";
 import { getWorkOSClient } from "../lib/workos-client";
 import { log } from "../utils/logger";
+import { WorkOS } from "@workos-inc/node";
 
 export class UsersService {
   private workosClient = getWorkOSClient();
@@ -26,18 +27,57 @@ export class UsersService {
   }
 
   async getCurrentUser(prisma: PrismaClient, authId: string) {
-    return prisma.users.findUnique({
+    let workosUser: Awaited<ReturnType<WorkOS["userManagement"]["getUser"]>> | null = null;
+
+    try {
+      workosUser = await getWorkOSClient().userManagement.getUser(authId);
+      console.log(workosUser);
+    } catch (error) {
+      // TODO: use sentry IO for this one.
+      console.error(error, "Failed to get workos user from WorkOS");
+    }
+
+    const user = await prisma.users.findUnique({
       where: {
-        authId,
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        userPhotoUrl: true,
+        email: workosUser?.email,
       },
     });
+
+    // TODO: Throw extra conditions based on workOS status here.
+
+    if (!user?.authId && user?.status === UserStatus.invited) {
+      if (workosUser) {
+        await prisma.users.update({
+          where: {
+            email: workosUser.email,
+          },
+          data: {
+            authId: workosUser.id,
+            status: UserStatus.active,
+          },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            userPhotoUrl: true,
+          },
+        });
+      }
+    } else {
+      return prisma.users.findUnique({
+        where: {
+          authId,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          userPhotoUrl: true,
+        },
+      });
+    }
   }
   async updateCurrentUser(prisma: PrismaClient, authId: string, data: Partial<Users>) {
     return prisma.users.update({
