@@ -4,6 +4,7 @@ import {
   CreateVenueUserInput,
   CreateUserInput,
   InviteUserInput,
+  UpdateVenueUserInput,
 } from "../validators/users.schema";
 import { getWorkOSClient } from "../lib/workos-client";
 import { log } from "../utils/logger";
@@ -89,8 +90,19 @@ export class UsersService {
       return null;
     }
 
-    const venues = [...new Set(currentUser.venueUsers.map((venueUser) => venueUser.venueId))];
-    const companies = [...new Set(currentUser.venueUsers.map((venueUser) => venueUser.companyId))];
+    const companiesMap = new Map<string, Set<string>>();
+
+    for (const venueUser of currentUser.venueUsers) {
+      if (!companiesMap.has(venueUser.companyId)) {
+        companiesMap.set(venueUser.companyId, new Set<string>());
+      }
+      companiesMap.get(venueUser.companyId)?.add(venueUser.venueId);
+    }
+
+    const companies = Array.from(companiesMap.entries()).map(([id, venues]) => ({
+      id,
+      venues: Array.from(venues),
+    }));
 
     return {
       id: currentUser.id,
@@ -98,7 +110,6 @@ export class UsersService {
       firstname: currentUser.firstName,
       lastname: currentUser.lastName,
       userphotourl: currentUser.userPhotoUrl,
-      venues,
       companies,
     };
   }
@@ -188,6 +199,16 @@ export class UsersService {
 
     return prisma.venueUsers.create({
       data: data,
+    });
+  }
+
+  async updateVenueUser(prisma: PrismaClient, data: UpdateVenueUserInput, authId: string) {
+    // TODO: Check if user has permissions to update venue user.
+    const { id, ...updates } = data;
+
+    return prisma.venueUsers.update({
+      where: { id },
+      data: updates,
     });
   }
 }

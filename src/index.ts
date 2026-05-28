@@ -48,6 +48,8 @@ app.use("/api/*", tenantMiddleware);
 // users
 app.get("/api/users/current", (c) => usersController.getCurrentUser(c));
 app.post("/api/users/invite", (c) => usersController.inviteUser(c));
+app.post("/api/users/venue-users", (c) => usersController.createVenueUser(c));
+app.patch("/api/users/venue-users", (c) => usersController.updateVenueUser(c));
 
 app.post("/api/users/company-users", (c) => usersController.createCompanyUser(c));
 

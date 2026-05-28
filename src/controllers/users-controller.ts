@@ -5,8 +5,10 @@ import { UsersService } from "../services/users-service";
 import { getTenantPrismaFromContext } from "../lib/context-client";
 import {
   createCompanyUserSchema,
+  createVenueUserSchema,
   createUserSchema,
   inviteUserSchema,
+  updateVenueUserSchema,
 } from "../validators/users.schema";
 
 export class UsersController {
@@ -90,6 +92,46 @@ export class UsersController {
     } catch (error) {
       log.error("Failed to create company user", error);
       return c.json({ error: "Failed to create company user" }, 500);
+    }
+  }
+
+  async createVenueUser(c: Context) {
+    try {
+      const { prismaClient, authId } = getTenantPrismaFromContext(c);
+
+      const body = await c.req.json();
+      const validated = createVenueUserSchema.safeParse(body);
+
+      if (!validated.success) {
+        return c.json({ error: z.treeifyError(validated.error) }, 400);
+      }
+
+      const venueUser = await this.usersService.createVenueUser(prismaClient, validated.data, authId);
+
+      return c.json({ message: "OK", data: venueUser }, 201);
+    } catch (error) {
+      log.error("Failed to create venue user", error);
+      return c.json({ error: "Failed to create venue user" }, 500);
+    }
+  }
+
+  async updateVenueUser(c: Context) {
+    try {
+      const { prismaClient, authId } = getTenantPrismaFromContext(c);
+
+      const body = await c.req.json();
+      const validated = updateVenueUserSchema.safeParse(body);
+
+      if (!validated.success) {
+        return c.json({ error: z.treeifyError(validated.error) }, 400);
+      }
+
+      const venueUser = await this.usersService.updateVenueUser(prismaClient, validated.data, authId);
+
+      return c.json({ message: "OK", data: venueUser }, 200);
+    } catch (error) {
+      log.error("Failed to update venue user", error);
+      return c.json({ error: "Failed to update venue user" }, 500);
     }
   }
 }
