@@ -27,7 +27,13 @@ export const deleteVenueSchema = z.object({
   id: z.string().min(1),
 });
 
+export const getAllVenuesSchema = z.object({
+  companyId: z.string().min(1).optional(),
+  status: venueStatusSchema.optional(),
+});
+
 export type CreateVenueInput = z.infer<typeof createVenueSchema>;
 export type UpdateVenueInput = z.infer<typeof updateVenueSchema>;
 export type DeleteVenueInput = z.infer<typeof deleteVenueSchema>;
+export type GetAllVenuesInput = z.infer<typeof getAllVenuesSchema>;
 export type Venue = Venues;

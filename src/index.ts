@@ -62,6 +62,7 @@ app.get("/api/companies/:id", (c) => companiesController.getCompanyById(c));
 // company settings
 
 // venues
+app.get("/api/venues", (c) => venuesController.getAllVenues(c));
 app.post("/api/venues", (c) => venuesController.createVenue(c));
 
 // company users.
