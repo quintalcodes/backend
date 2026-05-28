@@ -3,14 +3,12 @@ import { cors } from "hono/cors";
 // controllers
 import { AuthController } from "./controllers/auth-controller";
 import { UsersController } from "./controllers/users-controller";
-import { BudgetLineController } from "./controllers/budget-line-controller";
 import { AnalyticsController } from "./controllers/analytics-controller";
 import { CompaniesController } from "./controllers/companies-controller";
 import { VenuesController } from "./controllers/venue-controller";
 // controller constructors
 const authController = new AuthController();
 const usersController = new UsersController();
-const budgetLineController = new BudgetLineController();
 const analyticsController = new AnalyticsController();
 const companiesController = new CompaniesController();
 const venuesController = new VenuesController();
@@ -50,7 +48,6 @@ app.use("/api/*", tenantMiddleware);
 // users
 app.get("/api/users/current", (c) => usersController.getCurrentUser(c));
 app.post("/api/users/invite", (c) => usersController.inviteUser(c));
-app.post("/api/users", (c) => usersController.createUser(c)); // remove later
 
 app.post("/api/users/company-users", (c) => usersController.createCompanyUser(c));
 
@@ -66,12 +63,6 @@ app.get("/api/companies/:id", (c) => companiesController.getCompanyById(c));
 app.post("/api/venues", (c) => venuesController.createVenue(c));
 
 // company users.
-
-app.get("/api/budget-line", (c) => budgetLineController.getBudgetLines(c));
-app.post("/api/budget-line", (c) => budgetLineController.createBudgetLine(c));
-app.patch("/api/budget-line", (c) => budgetLineController.updateBudgetLine(c));
-app.delete("/api/budget-line", (c) => budgetLineController.deleteBudgetLine(c));
-app.get("/api/budget-line/:id", (c) => budgetLineController.getBudgetLineById(c));
 
 app.post("/api/analytics/monthly-budget-summary", (c) =>
   analyticsController.getMonthlyBudgetSummary(c),

@@ -64,20 +64,43 @@ export class UsersService {
           },
         });
       }
-    } else {
-      return prisma.users.findUnique({
-        where: {
-          authId,
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          userPhotoUrl: true,
-        },
-      });
     }
+
+    const currentUser = await prisma.users.findUnique({
+      where: {
+        authId,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        userPhotoUrl: true,
+        venueUsers: {
+          select: {
+            companyId: true,
+            venueId: true,
+          },
+        },
+      },
+    });
+
+    if (!currentUser) {
+      return null;
+    }
+
+    const venues = [...new Set(currentUser.venueUsers.map((venueUser) => venueUser.venueId))];
+    const companies = [...new Set(currentUser.venueUsers.map((venueUser) => venueUser.companyId))];
+
+    return {
+      id: currentUser.id,
+      email: currentUser.email,
+      firstname: currentUser.firstName,
+      lastname: currentUser.lastName,
+      userphotourl: currentUser.userPhotoUrl,
+      venues,
+      companies,
+    };
   }
   async updateCurrentUser(prisma: PrismaClient, authId: string, data: Partial<Users>) {
     return prisma.users.update({
