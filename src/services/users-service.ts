@@ -211,4 +211,33 @@ export class UsersService {
       data: updates,
     });
   }
+  async getVenueUsers(prisma: PrismaClient, venueId: string) {
+    return prisma.venueUsers.findMany({
+      where: { venueId },
+      select: {
+        userId: true,
+        status: true,
+        venueRole: {
+          select: {
+            name: true,
+          },
+        },
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+  async getVenueUserRoles(prisma: PrismaClient) {
+    return prisma.venueRoles.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+  }
 }

@@ -106,7 +106,11 @@ export class UsersController {
         return c.json({ error: z.treeifyError(validated.error) }, 400);
       }
 
-      const venueUser = await this.usersService.createVenueUser(prismaClient, validated.data, authId);
+      const venueUser = await this.usersService.createVenueUser(
+        prismaClient,
+        validated.data,
+        authId,
+      );
 
       return c.json({ message: "OK", data: venueUser }, 201);
     } catch (error) {
@@ -126,12 +130,47 @@ export class UsersController {
         return c.json({ error: z.treeifyError(validated.error) }, 400);
       }
 
-      const venueUser = await this.usersService.updateVenueUser(prismaClient, validated.data, authId);
+      const venueUser = await this.usersService.updateVenueUser(
+        prismaClient,
+        validated.data,
+        authId,
+      );
 
       return c.json({ message: "OK", data: venueUser }, 200);
     } catch (error) {
       log.error("Failed to update venue user", error);
       return c.json({ error: "Failed to update venue user" }, 500);
+    }
+  }
+  async getVenueUsers(c: Context) {
+    try {
+      const { prismaClient, authId } = getTenantPrismaFromContext(c);
+
+      const venueId = c.req.param("venueId");
+
+      // TODO: Check if incoming venueId is a valid.
+      if (!venueId) {
+        return c.json({ error: "Venue ID is required" }, 400);
+      }
+
+      const venueUsers = await this.usersService.getVenueUsers(prismaClient, venueId as string);
+
+      return c.json({ message: "OK", data: venueUsers }, 200);
+    } catch (error) {
+      log.error("Failed to get venue users", error);
+      return c.json({ error: "Failed to get venue users" }, 500);
+    }
+  }
+  async getVenueUserRoles(c: Context) {
+    try {
+      const { prismaClient, authId } = getTenantPrismaFromContext(c);
+
+      const venueUserRoles = await this.usersService.getVenueUserRoles(prismaClient);
+
+      return c.json({ message: "OK", data: venueUserRoles }, 200);
+    } catch (error) {
+      log.error("Failed to get venue user roles", error);
+      return c.json({ error: "Failed to get venue user roles" }, 500);
     }
   }
 }

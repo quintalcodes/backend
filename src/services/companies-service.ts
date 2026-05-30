@@ -10,10 +10,17 @@ export class CompaniesService {
 
   async getCompanies(prisma: PrismaClient, authId: string) {
     return prisma.companies.findMany({
+      where: {
+        OR: [
+          { companyUsers: { some: { user: { authId } } } },
+          { venueUsers: { some: { user: { authId } } } },
+        ],
+      },
       orderBy: { createdAt: "desc" },
     });
   }
 
+  // TODO: only if user is a CompanyUser of the company..
   async updateCompany(prisma: PrismaClient, authId: string, data: UpdateCompanyInput) {
     return prisma.companies.update({
       where: { id: data.id },
@@ -21,6 +28,7 @@ export class CompaniesService {
     });
   }
 
+  // TODO: only if user is a CompanyUser of the company..
   async deleteCompany(prisma: PrismaClient, authId: string, id: string) {
     return prisma.companies.update({
       where: { id: id },
@@ -31,8 +39,14 @@ export class CompaniesService {
   }
 
   async getCompanyById(prisma: PrismaClient, authId: string, id: string) {
-    return prisma.companies.findUnique({
-      where: { id: id },
+    return prisma.companies.findFirst({
+      where: {
+        id,
+        OR: [
+          { companyUsers: { some: { user: { authId } } } },
+          { venueUsers: { some: { user: { authId } } } },
+        ],
+      },
     });
   }
 }
