@@ -8,6 +8,7 @@ import {
   createVenueUserSchema,
   createUserSchema,
   inviteUserSchema,
+  updateUserSchema,
   updateVenueUserSchema,
 } from "../validators/users.schema";
 
@@ -43,6 +44,25 @@ export class UsersController {
     } catch (error) {
       log.error("Failed to create user", error);
       return c.json({ error: "Failed to create user" }, 500);
+    }
+  }
+
+  async updateUser(c: Context) {
+    try {
+      const { prismaClient, authId } = getTenantPrismaFromContext(c);
+      const body = await c.req.json();
+      const validated = updateUserSchema.safeParse(body);
+
+      if (!validated.success) {
+        return c.json({ error: z.treeifyError(validated.error) }, 400);
+      }
+
+      const user = await this.usersService.updateUser(prismaClient, validated.data, authId);
+
+      return c.json({ message: "OK", data: user }, 200);
+    } catch (error) {
+      log.error("Failed to update user", error);
+      return c.json({ error: "Failed to update user" }, 500);
     }
   }
 

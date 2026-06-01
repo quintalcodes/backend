@@ -4,6 +4,7 @@ import {
   CreateVenueUserInput,
   CreateUserInput,
   InviteUserInput,
+  UpdateUserInput,
   UpdateVenueUserInput,
 } from "../validators/users.schema";
 import { getWorkOSClient } from "../lib/workos-client";
@@ -81,6 +82,11 @@ export class UsersService {
           select: {
             companyId: true,
             venueId: true,
+            venueRole: {
+              select: {
+                id: true,
+              },
+            },
           },
         },
       },
@@ -126,6 +132,16 @@ export class UsersService {
     // TODO: use AuthId to check if user has permissions to create user.
     return prisma.users.create({
       data,
+    });
+  }
+
+  async updateUser(prisma: PrismaClient, data: UpdateUserInput, authId: string) {
+    // TODO: Check if user has permissions to update user.
+    const { id, ...updates } = data;
+
+    return prisma.users.update({
+      where: { id },
+      data: updates,
     });
   }
 
@@ -215,11 +231,14 @@ export class UsersService {
     return prisma.venueUsers.findMany({
       where: { venueId },
       select: {
+        id: true,
         userId: true,
+        venueRoleId: true,
         status: true,
         venueRole: {
           select: {
             name: true,
+            id: true,
           },
         },
         user: {
@@ -227,6 +246,7 @@ export class UsersService {
             firstName: true,
             lastName: true,
             email: true,
+            phone: true,
           },
         },
       },

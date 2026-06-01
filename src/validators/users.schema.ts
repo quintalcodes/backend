@@ -19,7 +19,7 @@ export const createUserSchema = z.object({
   status: z.enum(UserStatus).optional(),
 });
 
-export const updateUserSchema = createUserSchema.partial().extend({
+export const updateUserSchema = createUserSchema.omit({ email: true }).partial().extend({
   id: z.string().min(1),
 });
 
