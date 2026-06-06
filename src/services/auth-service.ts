@@ -7,7 +7,11 @@ import {
   getJwtIssuer,
   getJwtSecret,
 } from "../utils/jwt-config";
-import type { LoginWithPasswordInput } from "../validators/auth.schema";
+import type {
+  ConfirmPasswordResetInput,
+  LoginWithPasswordInput,
+  RequestPasswordResetInput,
+} from "../validators/auth.schema";
 
 type LoginWithPasswordContext = {
   ipAddress?: string;
@@ -40,6 +44,23 @@ const isInvalidCredentialsError = (error: unknown) => {
 };
 
 export class AuthService {
+  async requestPasswordReset(input: RequestPasswordResetInput) {
+    const client = getWorkOSClient();
+
+    await client.userManagement.createPasswordReset({
+      email: input.email,
+    });
+  }
+
+  async confirmPasswordReset(input: ConfirmPasswordResetInput) {
+    const client = getWorkOSClient();
+
+    await client.userManagement.resetPassword({
+      token: input.token,
+      newPassword: input.newPassword,
+    });
+  }
+
   async loginWithPassword(input: LoginWithPasswordInput, context: LoginWithPasswordContext = {}) {
     const client = getWorkOSClient();
     let response: Awaited<ReturnType<WorkOS["userManagement"]["authenticateWithPassword"]>>;

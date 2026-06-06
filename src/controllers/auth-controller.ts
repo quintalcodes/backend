@@ -3,7 +3,11 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { z } from "zod";
 import { AuthService, InvalidCredentialsError } from "../services/auth-service";
 import { RefreshSessionService } from "../services/refresh-session.service";
-import { loginWithPasswordSchema } from "../validators/auth.schema";
+import {
+  confirmPasswordResetSchema,
+  loginWithPasswordSchema,
+  requestPasswordResetSchema,
+} from "../validators/auth.schema";
 import type { LoginResponse } from "../types/workos-types";
 import { log } from "../utils/logger";
 import {
@@ -13,7 +17,10 @@ import {
   REFRESH_COOKIE_PATH,
 } from "../utils/refresh-cookie-config";
 
-type AuthServiceLike = Pick<AuthService, "loginWithPassword" | "issueAccessToken">;
+type AuthServiceLike = Pick<
+  AuthService,
+  "loginWithPassword" | "issueAccessToken" | "requestPasswordReset" | "confirmPasswordReset"
+>;
 type RefreshSessionServiceLike = Pick<
   RefreshSessionService,
   "createSession" | "rotateSession" | "revokeSession"
@@ -68,6 +75,44 @@ export class AuthController {
       return c.json({ error: "Authentication unavailable" }, 500);
     }
   }
+
+  async resetPassword(c: Context) {
+    const validated = requestPasswordResetSchema.safeParse(await c.req.json());
+
+    if (!validated.success) {
+      return c.json({ error: z.treeifyError(validated.error) }, 400);
+    }
+
+    try {
+      await this.authService.requestPasswordReset(validated.data);
+
+      return c.json(
+        { message: "If an account exists, a password reset email has been sent." },
+        200,
+      );
+    } catch (error) {
+      log.error("Password reset request failed", error);
+      return c.json({ error: "Password reset unavailable" }, 500);
+    }
+  }
+
+  async confirmResetPassword(c: Context) {
+    const validated = confirmPasswordResetSchema.safeParse(await c.req.json());
+
+    if (!validated.success) {
+      return c.json({ error: z.treeifyError(validated.error) }, 400);
+    }
+
+    try {
+      await this.authService.confirmPasswordReset(validated.data);
+
+      return c.json({ message: "Password has been reset." }, 200);
+    } catch (error) {
+      log.error("Password reset confirmation failed", error);
+      return c.json({ error: "Invalid or expired password reset token" }, 400);
+    }
+  }
+
   async refreshToken(c: Context) {
     const refreshToken = getCookie(c, REFRESH_COOKIE_NAME);
     if (!refreshToken) {

@@ -40,6 +40,10 @@ app.use(
 app.post("/api/login", publicRouteLimiter, (c) => authController.loginWithPassword(c));
 app.post("/api/auth/refresh", publicRouteLimiter, (c) => authController.refreshToken(c));
 app.post("/api/auth/logout", publicRouteLimiter, (c) => authController.logout(c));
+app.post("/api/auth/reset-password", publicRouteLimiter, (c) => authController.resetPassword(c));
+app.post("/api/auth/reset-password/confirm", publicRouteLimiter, (c) =>
+  authController.confirmResetPassword(c),
+);
 
 // Protected routes
 app.use("/api/*", authMiddleware);
