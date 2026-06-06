@@ -29,7 +29,7 @@ const corsOrigins = Bun.env.CORS_ORIGIN || "http://localhost:5173";
 
 app.use(
   cors({
-    origin: corsOrigins,
+    origin: "*",
     credentials: true,
     allowHeaders: ["Authorization", "Content-Type"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -62,7 +62,7 @@ app.post("/api/companies", (c) => companiesController.createCompany(c));
 app.patch("/api/companies", (c) => companiesController.updateCompany(c));
 app.get("/api/companies/:id", (c) => companiesController.getCompanyById(c));
 
-// company settings
+// company settings 
 
 // venues
 app.get("/api/venues", (c) => venuesController.getAllVenues(c));
