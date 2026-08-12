@@ -36,7 +36,7 @@ const getIpAddress = (c: Context) => {
   return c.req.header("x-real-ip") || c.req.header("cf-connecting-ip");
 };
 
-export class AuthController {
+class AuthController {
   constructor(
     private readonly authService: AuthServiceLike = new AuthService(),
     private readonly refreshSessionService: RefreshSessionServiceLike = new RefreshSessionService(),
@@ -162,3 +162,5 @@ function clearRefreshCookie(c: Context) {
     secure: getRefreshCookieSecure(),
   });
 }
+
+export const authController = new AuthController();

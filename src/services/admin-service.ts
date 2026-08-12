@@ -1,6 +1,11 @@
 import { getWorkOSClient } from "../lib/workos-client";
 import { log } from "../utils/logger";
-import { type CreateTenantInput } from "../validators/tenant.schema"; 
+import { type CreateTenantInput } from "../validators/tenant.schema";
+import { Client } from "pg";
+import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { Invitation, Organization } from "@workos-inc/node";
+import { spawnSync } from "bun";
 
 class AdminService {
   private workosClient = getWorkOSClient();
@@ -17,14 +22,137 @@ class AdminService {
         roleSlug: "owner",
       });
 
+      // Later version of this would wait for invitation to be accepted and payment approved before adding to registry and tenant database.
+      const addTenantToRegistry = await this.createTenantRegistry(tenant, tenantProps);
+      const createTenantDatabase = await this.createTenantDatabase(tenantProps.tenantDbName);
+
       return {
         tenant,
         inviteOwner,
+        addTenantToRegistry,
+        createTenantDatabase,
       };
     } catch (error) {
       log.error("Error creating tenant.", error);
       throw error;
     }
+  }
+
+  /**
+   * This function adds the workOS tenant to the registry database.
+   * @param org - The organization created in WorkOS.
+   * @param owner - The invitation sent to the tenant owner.
+   * @returns
+   */
+  async createTenantRegistry(org: Organization, tenantProps: CreateTenantInput) {
+    const registryUrl = process.env.REGISTRY_DATABASE_URL;
+    const registryClient = new Client({ connectionString: registryUrl });
+
+    try {
+      await registryClient.connect();
+
+      await registryClient.query(
+        `
+          INSERT INTO "Tenant" ("id", "workosOrgId", "subdomain", "name", "dbName", "config", "createdAt", "updatedAt")
+          VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW(), NOW())
+          ON CONFLICT ("workosOrgId")
+          DO UPDATE SET
+            "subdomain" = EXCLUDED."subdomain",
+            "name" = EXCLUDED."name",
+            "dbName" = EXCLUDED."dbName",
+            "config" = EXCLUDED."config",
+            "updatedAt" = NOW()
+        `,
+        [
+          randomUUID(),
+          org.id,
+          tenantProps.tenantSubdomain,
+          tenantProps.tenantName,
+          tenantProps.tenantDbName,
+          JSON.stringify({}),
+        ],
+      );
+
+      return { message: "Tenant added to registry successfully" };
+    } catch (error) {
+      log.error("Error creating tenant registry.", error);
+      throw error;
+    } finally {
+      await registryClient.end();
+    }
+  }
+
+  /**
+   * This function creates a new database for the tenant.
+   * @param dbName - The name of the database to create.
+   * @returns
+   */
+  async createTenantDatabase(dbName: string) {
+    const postgresBaseUrl = process.env.POSTGRES_BASE_URL;
+
+    if (!postgresBaseUrl) {
+      throw new Error("POSTGRES_BASE_URL is required");
+    }
+
+    const normalizedBaseUrl = postgresBaseUrl.replace(/\/$/, "");
+    const adminClient = new Client({ connectionString: `${normalizedBaseUrl}/postgres` });
+    const tenantDbString = `${normalizedBaseUrl}/${dbName}`;
+
+    try {
+      try {
+        await adminClient.connect();
+
+        const existingDatabase = await adminClient.query(
+          "SELECT 1 FROM pg_database WHERE datname = $1",
+          [dbName],
+        );
+
+        if (existingDatabase.rowCount) {
+          log.error("Tenant database already exists.", { dbName });
+          throw new Error("Tenant database already exists.");
+        }
+
+        await adminClient.query(`CREATE DATABASE ${adminClient.escapeIdentifier(dbName)}`);
+      } finally {
+        await adminClient.end();
+      }
+
+      const prismaMigrate = await this.runPrismaMigrate(tenantDbString);
+
+      return {
+        message: "Tenant database created successfully",
+        databaseString: tenantDbString,
+        prismaMigrate,
+      };
+    } catch (error) {
+      log.error("Error creating tenant database.", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Runs prisma migrate deploy for the tenant database.
+   * @returns
+   */
+  async runPrismaMigrate(databaseUrl: string) {
+    const projectRoot = fileURLToPath(new URL("../..", import.meta.url));
+    const schemaPath = "prisma/tenant/schema.prisma";
+
+    const result = spawnSync(["bunx", "prisma", "migrate", "deploy", `--schema=${schemaPath}`], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        DATABASE_URL: databaseUrl,
+      },
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Prisma migration failed for ${schemaPath}`);
+    }
+
+    return { message: "Prisma migration completed successfully" };
   }
 
   async listTenants() {
@@ -35,7 +163,6 @@ class AdminService {
       log.error("Error listing tenants.", error);
       throw error;
     }
-
   }
 }
 
