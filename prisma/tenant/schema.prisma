@@ -7,19 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum CompanyPermissionName {
-  owner
-  admin
-  member
-}
-
-enum VenuePermissionName {
-  admin
-  manager
-  supervisor
-  member
-}
-
 enum UserStatus {
   active
   invited
@@ -27,30 +14,10 @@ enum UserStatus {
   archived
 }
 
-enum CompanyUserStatus {
-  active
-  invited
-  disabled
-  archived
-}
-
-enum CompanyStatus {
-  active
-  inactive
-  archived
-}
-
-enum VenueStatus {
-  active
-  inactive
-  archived
-}
-
-enum VenueUserStatus {
-  active
-  invited
-  disabled
-  archived
+enum UserPermission {
+  owner
+  admin
+  member
 }
 
 model Users {
@@ -71,198 +38,8 @@ model Users {
   createdAt                   DateTime                  @default(now()) @map("created_at")
   updatedAt                   DateTime @updatedAt       @map("updated_at")
   deletedAt                   DateTime?                 @map("deleted_at")
-
-  companyUsers                CompanyUsers[]
-  venueUsers                  VenueUsers[]
   
+  permission                  UserPermission
+
   @@map("users")
-}
-
-model Companies {
-  id                          String   @id      @default(uuid())
-  name                        String
-  legalName                   String?           @map("legal_name")
-  tradeName                   String?           @map("trade_name")
-  taxNumber                   String?           @map("tax_number")
-
-  phone                       String?
-  email                       String?
-  website                     String?
-  addressLine1                String?           @map("address_line_1")
-  addressLine2                String?           @map("address_line_2")
-  city                        String?
-  state                       String?
-  postcode                    String?
-  country                     String?
-  status                      CompanyStatus     @default(active) @map("status")
-
-  createdAt                   DateTime          @default(now()) @map("created_at")
-  updatedAt                   DateTime          @updatedAt @map("updated_at")
-  deletedAt                   DateTime?         @map("deleted_at")
-
-  companyUsers                CompanyUsers[]
-  companySettings             CompanySettings[]
-  venues                      Venues[]
-  venueUsers                  VenueUsers[]
-  venueSettings               VenueSettings[]
-
-  @@map("companies")
-}
-
-model Venues {
-  id                          String   @id      @default(uuid())
-  companyId                   String            @map("company_id")
-  name                        String
-  taxNumber                   String?           @map("tax_number")
-
-  phone                       String?
-  email                       String?
-  website                     String?
-  addressLine1                String?           @map("address_line_1")
-  addressLine2                String?           @map("address_line_2")
-  city                        String?
-  state                       String?
-  postcode                    String?
-  country                     String?
-  status                      VenueStatus       @default(active) @map("status")
-
-
-  createdAt                   DateTime          @default(now()) @map("created_at")
-  updatedAt                   DateTime          @updatedAt @map("updated_at")
-  deletedAt                   DateTime?         @map("deleted_at")
-
-  company                     Companies         @relation(fields: [companyId], references: [id])
-  venueUsers                  VenueUsers[]
-  venueSettings               VenueSettings[]
-
-  @@map("venues")
-}
-
-model CompanyRoles {
-  id                          String   @id                @default(uuid())
-  name                        String                      @map("name")
-  description                 String?                     @map("description")
-  isSystemRole                Boolean                     @default(false) @map("is_system_role")
-  sortOrder                   Int                         @map("sort_order")
-
-  createdAt                   DateTime                    @default(now()) @map("created_at")
-  updatedAt                   DateTime                    @updatedAt @map("updated_at")
-
-  companyUsers                CompanyUsers[]
-  @@map("company_roles")
-}
-
-model VenueRoles {
-  id                          String   @id                @default(uuid())
-  name                        String                      @map("name")
-  description                 String?                     @map("description")
-  isSystemRole                Boolean                     @default(false) @map("is_system_role")
-  sortOrder                   Int                         @map("sort_order")
-
-  createdAt                   DateTime                    @default(now()) @map("created_at")
-  updatedAt                   DateTime                    @updatedAt @map("updated_at")
-
-  venueUsers                  VenueUsers[]
-  @@map("venue_roles")
-}
-
-
-
-model CompanyUsers {
-  id                          String   @id            @default(uuid())
-  companyId                   String                  @map("company_id")
-  userId                      String                  @map("user_id")
-  companyRoleId               String                  @map("company_role_id")
-  status                      CompanyUserStatus       @default(active) @map("status")
-  isActive                    Boolean  @default(true) @map("is_active")
-  invitedByUserId             String?                 @map("invited_by_user_id")
-  invitedAt                   DateTime?               @map("invited_at")
-  joinedAt                    DateTime?               @map("joined_at")
-
-  createdAt                   DateTime                @default(now()) @map("created_at")
-  updatedAt                   DateTime                @updatedAt @map("updated_at")
-  deletedAt                   DateTime?               @map("deleted_at")
-
-  company                     Companies               @relation(fields: [companyId], references: [id])
-  companyRole                 CompanyRoles            @relation(fields: [companyRoleId], references: [id])
-  user                        Users                   @relation(fields: [userId], references: [id])
-
-  @@map("company_users")
-}
-
-model VenueUsers {
-  id                          String   @id            @default(uuid())
-  companyId                   String                  @map("company_id")
-  venueId                     String                  @map("venue_id")
-  userId                      String                  @map("user_id")
-  status                      VenueUserStatus         @default(active) @map("status")
-  venueRoleId                 String                  @map("venue_role_id")
-  isActive                    Boolean  @default(true) @map("is_active")
-  invitedByUserId             String?                 @map("invited_by_user_id")
-
-  createdAt                   DateTime                @default(now()) @map("created_at")
-  updatedAt                   DateTime                @updatedAt @map("updated_at")
-  deletedAt                   DateTime?               @map("deleted_at")
-
-  company                     Companies               @relation(fields: [companyId], references: [id])
-  venue                       Venues                  @relation(fields: [venueId], references: [id])
-  venueRole                   VenueRoles              @relation(fields: [venueRoleId], references: [id])
-  user                        Users                   @relation(fields: [userId], references: [id])
-
-  @@map("venue_users")
-}
-
-model CompanySettings {
-  id                          String   @id      @default(uuid())
-  companyId                   String            @map("company_id")
-
-  effectiveFrom               DateTime          @default(now()) @map("effective_from") 
-  effectiveTo                 DateTime?         @map("effective_to")
-
-  country                     String            
-  currency                    String
-
-  onCostSettings              Json?             @map("on_cost_settings")
-  isActive                    Boolean           @default(true) @map("is_active")
-  createdByUserId             String            @map("created_by_user_id")
-
-  createdAt                   DateTime          @default(now()) @map("created_at")
-  updatedAt                   DateTime          @updatedAt @map("updated_at")
-  deletedAt                   DateTime?         @map("deleted_at")
-  
-  company                     Companies         @relation(fields: [companyId], references: [id])
-
-  @@map("company_settings")
-}
-
-model VenueSettings {
-  id                          String   @id      @default(uuid())
-  companyId                   String            @map("company_id")
-  venueId                     String            @map("venue_id")
-
-  effectiveFrom               DateTime          @default(now()) @map("effective_from") 
-  effectiveTo                 DateTime?         @map("effective_to")
-
-  timezone                    String
-
-  tradingDayStartTime         DateTime          @db.Time @map("trading_day_start_time")
-  tradingDayEndTime           DateTime          @db.Time @map("trading_day_end_time")
-  reportingCutoffTime         DateTime          @db.Time @map("reporting_cutoff_time")
-  openingHours                Json?             @map("opening_hours")
-  salesRules                  Json?             @map("sales_rules")
-  labourRules                 Json?             @map("labour_rules")
-  projectionRules             Json?             @map("projection_rules")
-  emailRecipient              Json?             @map("email_recipient")
-
-  isActive                    Boolean           @default(true) @map("is_active")
-
-  createdByUserId             String            @map("created_by_user_id")
-  createdAt                   DateTime          @default(now()) @map("created_at")
-  updatedAt                   DateTime          @updatedAt @map("updated_at")
-  deletedAt                   DateTime?         @map("deleted_at")
-
-
-  company                     Companies         @relation(fields: [companyId], references: [id])
-  venue                       Venues           @relation(fields: [venueId], references: [id])
-  @@map("venue_settings")
 }

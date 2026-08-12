@@ -2,24 +2,18 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 // controllers
 import { AuthController } from "./controllers/auth-controller";
-import { UsersController } from "./controllers/users-controller";
-import { AnalyticsController } from "./controllers/analytics-controller";
-import { CompaniesController } from "./controllers/companies-controller";
-import { VenuesController } from "./controllers/venue-controller";
 // controller constructors
 const authController = new AuthController();
-const usersController = new UsersController();
-const analyticsController = new AnalyticsController();
-const companiesController = new CompaniesController();
-const venuesController = new VenuesController();
 // middleware
 import { authMiddleware } from "./middleware/auth-middleware";
 import { tenantMiddleware } from "./middleware/tenant-middleware";
 import { publicRouteLimiter } from "./middleware/rate-limit-middleware";
+import { adminMiddleware } from "./middleware/admin-middleware";
 // utils
 import { log } from "./utils/logger";
 // types
 import type { Variables } from "./types/hono-env";
+import { adminController } from "./controllers/admin-controller";
 
 const app = new Hono<{ Variables: Variables }>();
 
@@ -31,7 +25,7 @@ app.use(
   cors({
     origin: "*",
     credentials: true,
-    allowHeaders: ["Authorization", "Content-Type"],
+    allowHeaders: ["Authorization", "Content-Type", "x-api-key"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   }),
 );
@@ -49,34 +43,12 @@ app.post("/api/auth/reset-password/confirm", publicRouteLimiter, (c) =>
 app.use("/api/*", authMiddleware);
 app.use("/api/*", tenantMiddleware);
 
-// users
-app.patch("/api/users", (c) => usersController.updateUser(c));
-app.get("/api/users/current", (c) => usersController.getCurrentUser(c));
-app.post("/api/users/invite", (c) => usersController.inviteUser(c));
-app.post("/api/users/venue-users", (c) => usersController.createVenueUser(c));
-app.patch("/api/users/venue-users", (c) => usersController.updateVenueUser(c));
-app.post("/api/users/company-users", (c) => usersController.createCompanyUser(c));
+// protected routes heree:
 
-app.get("/api/users/venue-users/roles", (c) => usersController.getVenueUserRoles(c));
-app.get("/api/users/venue-users/:venueId", (c) => usersController.getVenueUsers(c));
-
-// companies
-app.get("/api/companies", (c) => companiesController.getCompanies(c));
-app.post("/api/companies", (c) => companiesController.createCompany(c));
-app.patch("/api/companies", (c) => companiesController.updateCompany(c));
-app.get("/api/companies/:id", (c) => companiesController.getCompanyById(c));
-
-// company settings 
-
-// venues
-app.get("/api/venues", (c) => venuesController.getAllVenues(c));
-app.post("/api/venues", (c) => venuesController.createVenue(c));
-
-// company users.
-
-app.post("/api/analytics/monthly-budget-summary", (c) =>
-  analyticsController.getMonthlyBudgetSummary(c),
-);
+// Admin routes
+app.use("/admin/*", adminMiddleware);
+app.post("/admin/create-tenant", (c) => adminController.createTenant(c));
+app.get("/admin/tenants", (c) => adminController.listTenants(c));
 
 log.info("Server started!");
 export default {

@@ -76,6 +76,27 @@ export class AuthController {
     }
   }
 
+  async refreshToken(c: Context) {
+    const refreshToken = getCookie(c, REFRESH_COOKIE_NAME);
+    if (!refreshToken) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    const rotated = await this.refreshSessionService.rotateSession(refreshToken);
+    if (!rotated) {
+      clearRefreshCookie(c);
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    const token = await this.authService.issueAccessToken(
+      rotated.workosUserId,
+      rotated.organizationId,
+    );
+
+    setRefreshCookie(c, rotated.nextPlainToken);
+    return c.json<LoginResponse>(token, 200);
+  }
+
   async resetPassword(c: Context) {
     const validated = requestPasswordResetSchema.safeParse(await c.req.json());
 
@@ -111,27 +132,6 @@ export class AuthController {
       log.error("Password reset confirmation failed", error);
       return c.json({ error: "Invalid or expired password reset token" }, 400);
     }
-  }
-
-  async refreshToken(c: Context) {
-    const refreshToken = getCookie(c, REFRESH_COOKIE_NAME);
-    if (!refreshToken) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const rotated = await this.refreshSessionService.rotateSession(refreshToken);
-    if (!rotated) {
-      clearRefreshCookie(c);
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const token = await this.authService.issueAccessToken(
-      rotated.workosUserId,
-      rotated.organizationId,
-    );
-
-    setRefreshCookie(c, rotated.nextPlainToken);
-    return c.json<LoginResponse>(token, 200);
   }
 
   async logout(c: Context) {

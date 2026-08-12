@@ -2,7 +2,7 @@ import { rateLimiter } from "hono-rate-limiter";
 import { getConnInfo } from "hono/bun";
 
 export const publicRouteLimiter = rateLimiter({
-  windowMs: 60_000,
+  windowMs: 60000,
   limit: 30,
   standardHeaders: true,
   keyGenerator: (c) => {

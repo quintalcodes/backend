@@ -10,9 +10,14 @@ type SessionIdentity = {
 };
 
 export class RefreshSessionService {
+  /**
+   * Creates a new refresh session for the given identity (user and organization) hashing the plain token to store in the database
+   * @param identity - The identity of the user and organization
+   * @returns The plain token for the new session
+   */
   async createSession(identity: SessionIdentity) {
     const plainToken = generateRefreshToken();
-    const tokenHash = hashToken(plainToken);
+    const tokenHash = hashToken(plainToken); // Hash the plain token to store in the database
 
     await getRegistryPrisma().refreshSession.create({
       data: {

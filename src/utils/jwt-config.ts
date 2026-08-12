@@ -1,6 +1,6 @@
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 15 * 60;
-const DEFAULT_JWT_ISSUER = "venuelog-backend";
-const DEFAULT_JWT_AUDIENCE = "venuelog-api";
+const DEFAULT_JWT_ISSUER = "default-backend";
+const DEFAULT_JWT_AUDIENCE = "default-api";
 
 export function getJwtSecret() {
   const jwtSecret = Bun.env.JWT_SECRET;

@@ -3,24 +3,11 @@ const DEFAULT_REFRESH_TOKEN_EXPIRES_DAYS = 30;
 export const REFRESH_COOKIE_NAME = "vl_refresh";
 export const REFRESH_COOKIE_PATH = "/api/auth";
 
-function getRefreshTokenExpiresDays() {
-  const raw = Bun.env.REFRESH_TOKEN_EXPIRES_DAYS;
-
-  if (!raw) {
-    return DEFAULT_REFRESH_TOKEN_EXPIRES_DAYS;
-  }
-
-  const days = Number(raw);
-
-  if (!Number.isInteger(days) || days <= 0) {
-    throw new Error("REFRESH_TOKEN_EXPIRES_DAYS must be a positive integer");
-  }
-
-  return days;
-}
-
 export function getRefreshCookieMaxAgeSeconds() {
-  return getRefreshTokenExpiresDays() * 24 * 60 * 60;
+  const envValue = Bun.env.REFRESH_TOKEN_EXPIRES_DAYS ?? DEFAULT_REFRESH_TOKEN_EXPIRES_DAYS;
+  const days = Number(envValue);
+
+  return days * 24 * 60 * 60;
 }
 
 export function getRefreshTokenExpiryDate() {

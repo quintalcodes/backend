@@ -21,24 +21,42 @@ const logger = pino({
     : undefined,
 });
 
+function toLogObject(args: unknown[]) {
+  if (args.length === 0) return {};
+
+  const [first, ...rest] = args;
+  if (first instanceof Error) {
+    return {
+      err: first,
+      ...(rest.length > 0 ? { data: rest.length === 1 ? rest[0] : rest } : {}),
+    };
+  }
+
+  if (args.length === 1 && typeof first === "object" && first !== null) {
+    return first as Record<string, unknown>;
+  }
+
+  return { data: args.length === 1 ? first : args };
+}
+
 export const log = {
   error: (message: string, ...args: unknown[]) => {
-    logger.error({ ...args }, message);
+    logger.error(toLogObject(args), message);
   },
   warn: (message: string, ...args: unknown[]) => {
-    logger.warn({ ...args }, message);
+    logger.warn(toLogObject(args), message);
   },
   info: (message: string, ...args: unknown[]) => {
-    logger.info({ ...args }, message);
+    logger.info(toLogObject(args), message);
   },
   debug: (message: string, ...args: unknown[]) => {
-    logger.debug({ ...args }, message);
+    logger.debug(toLogObject(args), message);
   },
   trace: (message: string, ...args: unknown[]) => {
-    logger.trace({ ...args }, message);
+    logger.trace(toLogObject(args), message);
   },
   fatal: (message: string, ...args: unknown[]) => {
-    logger.fatal({ ...args }, message);
+    logger.fatal(toLogObject(args), message);
   },
 };
 

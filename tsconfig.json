@@ -3,6 +3,7 @@
     "strict": true,
     "module": "esnext",
     "target": "esnext",
-    "moduleResolution": "bundler"
-  }
+    "moduleResolution": "bundler",
+    "types": ["bun"]
+  },
 }

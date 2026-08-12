@@ -21,9 +21,26 @@ interface WorkOSAuthenticationResponse {
   authenticationMethod: string;
 }
 
+interface WorkOSOrganizationResponse {
+  object: "organization";
+  id: string;
+  name: string;
+  allowProfilesOutsideOrganization: boolean;
+  domains: [];
+  createdAt: string;
+  updatedAt: string;
+  externalId: string | null;
+  metadata: Record<string, unknown>;
+}
+
 type LoginResponse = {
   accessToken: string;
   expiresIn: number;
 };
 
-export type { LoginResponse, WorkOSUserResponse, WorkOSAuthenticationResponse };
+export type {
+  LoginResponse,
+  WorkOSUserResponse,
+  WorkOSAuthenticationResponse,
+  WorkOSOrganizationResponse,
+};
