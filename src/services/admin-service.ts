@@ -5,19 +5,24 @@ import { Client } from "pg";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Invitation, Organization } from "@workos-inc/node";
-import { spawnSync } from "bun";
+import { spawn } from "bun";
 
 class AdminService {
   private workosClient = getWorkOSClient();
 
   async createTenant(tenantProps: CreateTenantInput) {
     try {
-      const tenant = await this.workosClient.organizations.createOrganization({
-        name: tenantProps.tenantName,
-      });
+      const existingEntry = await this.findTenantRegistryEntry(tenantProps.tenantDbName);
+
+      const tenant = existingEntry
+        ? await this.workosClient.organizations.getOrganization(existingEntry.workosOrgId)
+        : await this.workosClient.organizations.createOrganization({
+            name: tenantProps.tenantName,
+          });
 
       const inviteOwner = await this.workosClient.userManagement.sendInvitation({
         email: tenantProps.tenantOwnerEmail,
+
         organizationId: tenant.id,
         roleSlug: "owner",
       });
@@ -35,6 +40,34 @@ class AdminService {
     } catch (error) {
       log.error("Error creating tenant.", error);
       throw error;
+    }
+  }
+
+  /**
+   * Looks up an existing registry entry for a tenant database name, so
+   * retries can reuse the WorkOS org that a prior attempt already created
+   * instead of provisioning a duplicate.
+   * @param dbName - The tenant database name.
+   * @returns
+   */
+  async findTenantRegistryEntry(dbName: string) {
+    const registryUrl = process.env.REGISTRY_DATABASE_URL;
+    const registryClient = new Client({ connectionString: registryUrl });
+
+    try {
+      await registryClient.connect();
+
+      const result = await registryClient.query<{ workosOrgId: string }>(
+        `SELECT "workosOrgId" FROM "Tenant" WHERE "dbName" = $1`,
+        [dbName],
+      );
+
+      return result.rows[0] ?? null;
+    } catch (error) {
+      log.error("Error looking up tenant registry entry.", error);
+      throw error;
+    } finally {
+      await registryClient.end();
     }
   }
 
@@ -108,11 +141,13 @@ class AdminService {
         );
 
         if (existingDatabase.rowCount) {
-          log.error("Tenant database already exists.", { dbName });
-          throw new Error("Tenant database already exists.");
+          // A prior attempt already created the database (its migration may
+          // have failed or not run yet). Re-running migrate deploy below is
+          // safe and idempotent, so just skip creation instead of erroring.
+          log.info("Tenant database already exists, re-running migrations.", { dbName });
+        } else {
+          await adminClient.query(`CREATE DATABASE ${adminClient.escapeIdentifier(dbName)}`);
         }
-
-        await adminClient.query(`CREATE DATABASE ${adminClient.escapeIdentifier(dbName)}`);
       } finally {
         await adminClient.end();
       }
@@ -121,7 +156,6 @@ class AdminService {
 
       return {
         message: "Tenant database created successfully",
-        databaseString: tenantDbString,
         prismaMigrate,
       };
     } catch (error) {
@@ -131,24 +165,31 @@ class AdminService {
   }
 
   /**
-   * Runs prisma migrate deploy for the tenant database.
-   * @returns
+   * Runs prisma migrate deploy for tenant database.
+   * @param databaseUrl - The URL of the tenant database.
+   * @returns {Promise<{ message: string }>} - A promise
    */
   async runPrismaMigrate(databaseUrl: string) {
     const projectRoot = fileURLToPath(new URL("../..", import.meta.url));
     const schemaPath = "prisma/tenant/schema.prisma";
+    const configPath = "prisma/tenant/prisma.config.ts";
 
-    const result = spawnSync(["bunx", "prisma", "migrate", "deploy", `--schema=${schemaPath}`], {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        DATABASE_URL: databaseUrl,
+    const proc = spawn(
+      ["bunx", "prisma", "migrate", "deploy", `--schema=${schemaPath}`, `--config=${configPath}`],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          DATABASE_URL: databaseUrl,
+        },
+        stdout: "inherit",
+        stderr: "inherit",
       },
-      stdout: "inherit",
-      stderr: "inherit",
-    });
+    );
 
-    if (result.exitCode !== 0) {
+    const exitCode = await proc.exited;
+
+    if (exitCode !== 0) {
       throw new Error(`Prisma migration failed for ${schemaPath}`);
     }
 
