@@ -22,14 +22,13 @@ class AdminService {
 
       const inviteOwner = await this.workosClient.userManagement.sendInvitation({
         email: tenantProps.tenantOwnerEmail,
-
         organizationId: tenant.id,
         roleSlug: "owner",
       });
 
       // Later version of this would wait for invitation to be accepted and payment approved before adding to registry and tenant database.
       const addTenantToRegistry = await this.createTenantRegistry(tenant, tenantProps);
-      const createTenantDatabase = await this.createTenantDatabase(tenantProps.tenantDbName);
+      const createTenantDatabase = await this.createTenantDatabase(tenantProps, inviteOwner);
 
       return {
         tenant,
@@ -116,11 +115,11 @@ class AdminService {
   }
 
   /**
-   * This function creates a new database for the tenant.
+   * This function creates a new database for the tenant. It also adds the owner user to the database.
    * @param dbName - The name of the database to create.
    * @returns
    */
-  async createTenantDatabase(dbName: string) {
+  async createTenantDatabase(tenantProps: CreateTenantInput, inviteOwner: Invitation) {
     const postgresBaseUrl = process.env.POSTGRES_BASE_URL;
 
     if (!postgresBaseUrl) {
@@ -129,7 +128,7 @@ class AdminService {
 
     const normalizedBaseUrl = postgresBaseUrl.replace(/\/$/, "");
     const adminClient = new Client({ connectionString: `${normalizedBaseUrl}/postgres` });
-    const tenantDbString = `${normalizedBaseUrl}/${dbName}`;
+    const tenantDbString = `${normalizedBaseUrl}/${tenantProps.tenantDbName}`;
 
     try {
       try {
@@ -137,22 +136,57 @@ class AdminService {
 
         const existingDatabase = await adminClient.query(
           "SELECT 1 FROM pg_database WHERE datname = $1",
-          [dbName],
+          [tenantProps.tenantDbName],
         );
 
         if (existingDatabase.rowCount) {
-          // A prior attempt already created the database (its migration may
-          // have failed or not run yet). Re-running migrate deploy below is
-          // safe and idempotent, so just skip creation instead of erroring.
-          log.info("Tenant database already exists, re-running migrations.", { dbName });
+          log.info("Tenant database already exists, re-running migrations.", {
+            tenantDbName: tenantProps.tenantDbName,
+          });
         } else {
-          await adminClient.query(`CREATE DATABASE ${adminClient.escapeIdentifier(dbName)}`);
+          await adminClient.query(
+            `CREATE DATABASE ${adminClient.escapeIdentifier(tenantProps.tenantDbName)}`,
+          );
         }
       } finally {
         await adminClient.end();
       }
 
       const prismaMigrate = await this.runPrismaMigrate(tenantDbString);
+
+      const tenantClient = new Client({ connectionString: tenantDbString });
+      try {
+        await tenantClient.connect();
+
+        await tenantClient.query(
+          `
+            INSERT INTO users (id, invitation_id, first_name, last_name, email, permission, status, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            ON CONFLICT (email)
+            DO UPDATE SET
+              invitation_id = EXCLUDED.invitation_id,
+              first_name = EXCLUDED.first_name,
+              last_name = EXCLUDED.last_name,
+              permission = EXCLUDED.permission,
+              status = EXCLUDED.status,
+              updated_at = NOW()
+          `,
+          [
+            randomUUID(),
+            inviteOwner.id,
+            tenantProps.tenantOwnerFirstName,
+            tenantProps.tenantOwnerLastName,
+            tenantProps.tenantOwnerEmail,
+            "owner",
+            "invited",
+          ],
+        );
+      } catch (error) {
+        log.error("Error adding user to tenant database.", error);
+        throw error;
+      } finally {
+        await tenantClient.end();
+      }
 
       return {
         message: "Tenant database created successfully",
