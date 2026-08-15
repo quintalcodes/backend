@@ -49,7 +49,9 @@ class AdminService {
    * @param dbName - The tenant database name.
    * @returns
    */
-  async findTenantRegistryEntry(dbName: string) {
+  async findTenantRegistryEntry(
+    dbName: string,
+  ): Promise<{ workosOrgId: string } | null> {
     const registryUrl = process.env.REGISTRY_DATABASE_URL;
     const registryClient = new Client({ connectionString: registryUrl });
 
