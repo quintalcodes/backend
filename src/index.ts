@@ -1,9 +1,11 @@
+// Startup Checks
+import "./startup";
+
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 // controllers
-import { AuthController } from "./controllers/auth-controller";
+import { authController } from "./controllers/auth-controller";
 // controller constructors
-const authController = new AuthController();
 // middleware
 import { authMiddleware } from "./middleware/auth-middleware";
 import { tenantMiddleware } from "./middleware/tenant-middleware";
@@ -14,13 +16,14 @@ import { log } from "./utils/logger";
 // types
 import type { Variables } from "./types/hono-env";
 import { adminController } from "./controllers/admin-controller";
+import { adminService } from "./services/admin-service";
 
 const app = new Hono<{ Variables: Variables }>();
 
 log.info("Starting server ...");
 
+// Cors, Headers, Methods
 const corsOrigins = Bun.env.CORS_ORIGIN || "http://localhost:5173";
-
 app.use(
   cors({
     origin: "*",

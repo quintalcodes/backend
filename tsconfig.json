@@ -5,5 +5,5 @@
     "target": "esnext",
     "moduleResolution": "bundler",
     "types": ["bun"]
-  },
+  }
 }

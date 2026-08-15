@@ -1,7 +1,13 @@
 import { z } from "zod";
 
 export const CreateTenantInput = z.object({
-  tenantDbName: z.string().min(1).toLowerCase().transform((val) => val.replace(/\s+/g, "_")),
+  tenantDbName: z
+    .string()
+    .min(1)
+    .max(63)
+    .toLowerCase()
+    .transform((val) => val.replace(/[\s-]+/g, "_"))
+    .pipe(z.string().regex(/^[a-z0-9_-]+$/, "Database name contains unsupported characters")),
   tenantName: z.string().min(1).toLowerCase(),
   tenantSubdomain: z.string().min(1).toLowerCase(),
   tenantOwnerEmail: z.email().toLowerCase(),
